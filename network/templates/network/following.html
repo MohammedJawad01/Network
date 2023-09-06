@@ -1,0 +1,71 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+
+<script>
+
+function likeHandler(id , likedWho){
+            const btn = document.getElementById(`${id}`);
+
+            btn.classList.remove('fa-thumbs-up');
+            btn.classList.remove('fa-thumbs-down');
+
+            if(likedWho.indexOf(id) >= 0 ){
+                var liked = true;
+            }else{
+                var liked = false
+            }
+
+            if(liked === true){
+                fetch(`/remove_like/${id}`)
+                .then(response => response.json)
+                .then(result =>{
+                    btn.classList.add('fa-thumbs-up');
+                })
+            }else{
+                fetch(`/add_like/${id}`)
+                .then(response => response.json)
+                .then(result =>{
+                 btn.classList.add('fa-thumbs-down');
+                })
+            }
+            liked = !liked
+        }
+ 
+
+</script>
+
+{% if user.is_authenticated %}
+<h1>Following</h1>
+        <div class="posts">
+            {% for post in page_posts%}
+                <div id="posts">
+                    <h6> <a  style="text-decoration: none;" href="{% url 'profile' user_id=post.user.id %}">@{{post.user}}</a> Posted :</h6>
+                    <h6 style="padding-left: 12rem; color: #275EFE;">{{post.content}}</h6>
+                    <p id="date">{{post.date}}</p>
+                    {% if post.id in likedWho %}
+                            <!-- already liked  -->
+                            <button id="{{post.id}}" class="btn btn-info fa fa-thumbs-down col-1" onclick="likeHandler({{post.id}}, {{likedWho}})"></button>
+                            {% else %}
+                            <button id="{{post.id}}"  class="btn btn-info fa fa-thumbs-up col-1"  onclick="likeHandler({{post.id}}, {{likedWho}})"></button>
+                            {% endif %}
+                </div>
+            {% endfor %}
+            
+            <nav aria-label="Page navigation example">
+                <ul class="pagination d-flex m-2">
+                  {% if page_posts.has_previous %}
+                  <li class="page-item"><a class="page-link" href="?page={{page_posts.previous_page_number}}">Previous</a></li>
+                  {% endif %}
+                  
+                  <!-- Add an empty flex-grow element to push the "Next" button to the right -->
+                  <li class="flex-grow-1"></li>
+              
+                  {% if page_posts.has_next  %}
+                  <li class="page-item"><a class="page-link" href="?page={{page_posts.next_page_number}}">Next</a></li>
+                  {% endif %}
+                </ul>
+              </nav>
+             {% endif %}
+
+{% endblock %}

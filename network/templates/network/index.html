@@ -1,0 +1,153 @@
+{% extends "network/layout.html" %}
+
+{% block body %}
+
+<script>
+        function getCookie(name){
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length == 2) return parts.pop().split(';').shift();
+        }
+
+        function submitHandler(id){
+            const textareaValue = document.getElementById(`textarea_${id}`).value
+            const content = document.getElementById(`content_${id}`);
+            const modal = document.getElementById(`modal_edit_post_${id}`)
+            fetch(`/edit/${id}`,{
+                method:"POST",
+                headers:{"content-type" : "application/json", "X-CSRFToken" : getCookie("csrftoken")},
+                body: JSON.stringify({
+                    content: textareaValue
+                })
+            })
+            .then(response => response.json())
+            .then(result => {
+                content.innerHTML = result.data;
+
+                modal.classList.remove('show');
+                modal.setAttribute('aria-hidden', 'true');
+                modal.setAttribute('style', 'display:none');
+
+                const modalsBackdrops = document.getElementsByClassName('modal-backdrop');
+
+                for( let i=0; i<modalsBackdrops.length; i++){
+                    document.body.removeChild(modalsBackdrops[i]);
+                }
+            })
+        }
+
+        function likeHandler(id , likedWho){
+            const btn = document.getElementById(`${id}`);
+
+            btn.classList.remove('fa-thumbs-up');
+            btn.classList.remove('fa-thumbs-down');
+
+            if(likedWho.indexOf(id) >= 0 ){
+                var liked = true;
+            }else{
+                var liked = false
+            }
+
+            if(liked === true){
+                fetch(`/remove_like/${id}`)
+                .then(response => response.json)
+                .then(result =>{
+                    btn.classList.add('fa-thumbs-up');
+                })
+            }else{
+                fetch(`/add_like/${id}`)
+                .then(response => response.json)
+                .then(result =>{
+                 btn.classList.add('fa-thumbs-down');
+                })
+            }
+            liked = !liked
+        }
+    
+
+</script>
+
+{% if user.is_authenticated %}
+    <h1 id="blue">All Post</h1>
+    <div id="Posts-Border" class="my-3 mx-5">
+        <h2 id="blue">New Post</h2>
+    <form action="{% url 'newPost' %}" method="POST">
+        {% csrf_token %}
+        <div class="row" >
+        <textarea name="content"  cols="130" rows="5"></textarea>
+        <div class="typewriter">
+            <div class="slide"><i></i></div>
+            <div class="paper"></div>
+            <div class="keyboard"></div>
+        </div>
+    </div>
+        <br>
+        <button class="post-button">
+            <svg viewBox="0 0 16 16" class="bi bi-twitter" fill="currentColor" height="18" width="18" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5.026 15c6.038 0 9.341-5.003 9.341-9.334 0-.14 0-.282-.006-.422A6.685 6.685 0 0 0 16 3.542a6.658 6.658 0 0 1-1.889.518 3.301 3.301 0 0 0 1.447-1.817 6.533 6.533 0 0 1-2.087.793A3.286 3.286 0 0 0 7.875 6.03a9.325 9.325 0 0 1-6.767-3.429 3.289 3.289 0 0 0 1.018 4.382A3.323 3.323 0 0 1 .64 6.575v.045a3.288 3.288 0 0 0 2.632 3.218 3.203 3.203 0 0 1-.865.115 3.23 3.23 0 0 1-.614-.057 3.283 3.283 0 0 0 3.067 2.277A6.588 6.588 0 0 1 .78 13.58a6.32 6.32 0 0 1-.78-.045A9.344 9.344 0 0 0 5.026 15z"></path>
+            </svg>
+            <span>Post</span>
+        </button>
+    </form>
+</div>
+{% endif %}
+
+        <div class="posts">
+            {% for post in page_posts%}
+                <div id="posts">
+                    <h6> <a  style="text-decoration: none;" href="{% url 'profile' user_id=post.user.id %}">@{{post.user}}</a> Posted :</h6>
+                    <h6 style="padding-left: 12rem; color: #275EFE;" id="content_{{post.id}}">{{post.content}}</h6>
+                    <p id="date">{{post.date}}</p>
+                    {% if user.is_authenticated %}
+                        {% if user == post.user%}
+                            <button class="custom-btn btn-2" data-toggle="modal" data-target = "#modal_edit_post_{{post.id}}">Edit</button>
+
+                            <div>
+                                <div class="modal" tabindex="-1"  id="modal_edit_post_{{post.id}}" role="dialog" aria-labelledby="modal_edit_post_{{post.id}}_label" aria-hidden="true" >
+                                    <div class="modal-dialog" role="document">
+                                      <div class="modal-content">
+                                        <div class="modal-header">
+                                          <h5 class="modal-title">Edit Post</h5>
+                                          <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                          </button>
+                                        </div>
+                                        <div class="modal-body">
+                                           <textarea name="content" id="textarea_{{post.id}}" class="form-control" rows="6">{{post.content}}</textarea>
+                                        </div>
+
+                                        <div class="modal-footer">
+                                          <button type="button" class="custom-btn btn-2" onclick="submitHandler({{post.id}})">Save</button>
+                                          <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                            </div>
+                            {% else %}
+                            {% if post.id in likedWho %}
+                            <!-- already liked  -->
+                            <button id="{{post.id}}" class="btn btn-info fa fa-thumbs-down col-1" onclick="likeHandler({{post.id}}, {{likedWho}})"></button>
+                            {% else %}
+                            <button id="{{post.id}}"  class="btn btn-info fa fa-thumbs-up col-1"  onclick="likeHandler({{post.id}}, {{likedWho}})"></button>
+                            {% endif %}
+                        {% endif %}         
+                    {% endif %}
+                </div>
+            {% endfor %}
+            <nav aria-label="Page navigation example">
+                <ul class="pagination d-flex m-2">
+                  {% if page_posts.has_previous %}
+                  <li class="page-item"><a class="page-link" href="?page={{page_posts.previous_page_number}}">Previous</a></li>
+                  {% endif %}
+                  
+                  <!-- Add an empty flex-grow element to push the "Next" button to the right -->
+                  <li class="flex-grow-1"></li>
+              
+                  {% if page_posts.has_next  %}
+                  <li class="page-item"><a class="page-link" href="?page={{page_posts.next_page_number}}">Next</a></li>
+                  {% endif %}
+                </ul>
+              </nav>
+              
+{% endblock %}
